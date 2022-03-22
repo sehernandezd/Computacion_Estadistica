@@ -1,0 +1,140 @@
+---
+title: "Computación Estadística 03/17/2022"
+author: "Sergio Andrés Hernández"
+date: "3/17/2022"
+output: html_document
+---
+
+## Estadísticas descriptivas
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr) # Librería dplyr -> MUY IMPORTANTE
+library(readxl)
+library(ggplot2)
+library(Hmisc) # Utilización función CUT2
+library(googledrive)
+library(googlesheets4)
+```
+
+# prueba en Google Drive
+
+Algunas veces tenemos alojados nuestros repositorios en la nube, para esto es viable tener herramientas para descargar y operar datos desde allí
+
+
+- Token de autorización
+
+```{r}
+library(googledrive)
+drive_auth(path = "/path/to/your/service-account-token.json")
+```
+
+- Si se necesita conocer los *nombres* e *id* del archivo
+```{r}
+googledrive::drive_find(n_max=30)
+```
+- Búsqueda por hoja de cálculo
+
+```{r}
+drive_find(type = 'spreadsheet')
+```
+
+```{r}
+x<-drive_get('XPABLO')
+```
+```{r}
+x$id
+```
+- Descarga del archivo
+
+```{r}
+googledrive::drive_download('XPABLO.XLSX')
+
+```
+```{r}
+library(readxl)
+XPABLO <- read_excel("C:/Users/57321/Downloads/XPABLO.XLSX")
+View(XPABLO)
+```
+
+####df = data.frame(calcio = rnorm(n = , mean = , sd = )) # Dataframe -> Marco de datos, de forma tabular
+
+
+```{r}
+grupos <- cut(x = XPABLO$Ca, breaks = 6) # cut -> Función para crear categorías
+unique(grupos)
+
+ggplot(XPABLO, aes(x = Long, y = Lat, color = grupos)) + #Aesthetic
+  geom_point()
+```
+
+```{r}
+grupos2 <- cut(x = XPABLO$Mg, breaks = 3) # cut -> Función para crear categorías
+unique(grupos2)
+
+ggplot(XPABLO, aes(x = Long, y = Lat, color = grupos2)) + #Aesthetic
+  geom_point()
+```
+
+## Asignación 
+
+Mapear (con coordenadas) el resto de variables, no necesariamente con 4 grupos
+
+```{r}
+Ca_Mg = XPABLO$Ca/XPABLO$Mg
+rel = cut(Ca_Mg, breaks = 2)
+unique(rel)
+
+ggplot(XPABLO, aes(Long, Lat, color = rel))+
+  geom_point()
+```
+
+```{r}
+K_Ca = XPABLO$K/XPABLO$Ca
+rel = cut(x = K_Ca, breaks = 5)
+ggplot(XPABLO, aes(Long, Lat, color = rel))+
+  geom_point()
+```
+
+```{r}
+Ca_K = XPABLO$Ca/XPABLO$K
+Ca_K = cut(x = Ca_K, breaks = 12)
+ggplot(XPABLO, aes(Long, Lat, color = Ca_K))+
+  geom_point()
+```
+
+## Creando distribución cuartil
+
+```{r}
+Ca_K = XPABLO$Ca/XPABLO$K
+nuevos_grupos <- quantile(x = Ca_K, probs = c(0.25, 0.5, 0.75))
+nuevos_grupos
+
+```
+```{r}
+
+q_1 = nuevos_grupos[1];q_1
+q_2 = nuevos_grupos[2];q_2
+q_3 = nuevos_grupos[3];q_3
+```
+
+
+```{r}
+data1 <- subset(Ca_K, Ca_K < q_1);data1
+data2 <- subset(Ca_K, Ca_K < q_2 & Ca_K > q_1)#;data2
+data3 <- subset(Ca_K, Ca_K < q_3 & Ca_K > q_2)#;data3
+data4 <- subset(Ca_K, Ca_K > q_3)#;data4
+```
+
+```{r}
+colors <- ifelse(Ca_K %in% data1, 'yellow3',
+                 ifelse(Ca_K %in% data2, 'red3',
+                        ifelse(Ca_K %in% data3, 'green3','black')))
+ggplot(XPABLO, aes(Long, Lat, fill = colors ))+
+  geom_point(color = colors)+
+  scale_fill_discrete(name = 'Cuartil', labels = c('menor Q1', 'Q1-Q2', 'Q2-Q3', ' Q3-max'))
+```
+
+## La leyenda aparece con el color, cambiarla por el cuartil
+
+
