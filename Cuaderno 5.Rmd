@@ -1,0 +1,164 @@
+---
+title: "Clase 31032022"
+author: "Sergio Andrés Hernández"
+date: "4/3/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tinytex)
+library(dplyr) # Librería dplyr -> MUY IMPORTANTE
+library(readxl)
+library(ggplot2)
+library(Hmisc) # Utilización función CUT2
+#install.packages("ape")
+library(ape)
+```
+
+## Acceso al archivo
+
+```{r}
+#Hoja de calculo disponible en: "https://docs.google.com/spreadsheets/d/11FRDO_mRtu_r3mbdvePRlGmRCZMK9-6A/edit?usp=sharing&ouid=115388581501604549187&rtpof=true&sd=true"
+library(readxl)
+XPABLO <- read_excel("C:/Users/57321/Downloads/XPABLO.XLSX")
+XPABLO <- XPABLO[-c(16,17,18,19)]
+View(XPABLO)
+```
+
+# Asignación
+
+**Hallar el indice de Moran para las variables del archivo XPABLO**
+
+_Revisemos cúales son las variables del archivo XPABLO nuevamente_
+
+```{r}
+colnames(XPABLO)
+```
+## Matriz de distacia
+
+```{r}
+dist_matrix_pablo <- as.matrix(dist(cbind(XPABLO$Long,XPABLO$Lat)))#;dist_matrix
+which.max(dist_matrix_pablo) # Es la posición de la máxima
+max(dist_matrix_pablo) # Mayor valor 
+min(dist_matrix_pablo) # Menor valor
+dim(XPABLO)
+```
+
+
+
+## Inversa de la distancia
+
+```{r}
+dist_matrix_inv_pablo <- 1 / dist_matrix_pablo # Element wise
+diag(dist_matrix_inv_pablo) <- 0
+#dist_matrix_inv
+```
+
+*Calculo para variable de MO*
+
+```{r}
+Moran.I(XPABLO$MO, dist_matrix_inv_pablo) # p.value < 0.05 <- Dependencia espacial
+```
+
+*Calculo para variable de Ca*
+
+```{r}
+Moran.I(XPABLO$Ca, dist_matrix_inv_pablo) # p.value < 0.05 <- Dependencia espacial
+```
+
+*Calculo para variable de Mg*
+
+```{r}
+Moran.I(XPABLO$Mg, dist_matrix_inv_pablo) # p.value < 0.05 <- Dependencia espacial
+```
+*Calculo para variable de K*
+
+```{r}
+Moran.I(XPABLO$K, dist_matrix_inv_pablo) # p.value < 0.05 <- Dependencia espacial
+```
+*Calculo para variable de K*
+
+```{r}
+Moran.I(XPABLO$Na, dist_matrix_inv_pablo) # p.value < 0.05 <- Dependencia espacial
+```
+*Calculo para variable de CICE*
+
+```{r}
+Moran.I(XPABLO$CICE, dist_matrix_inv_pablo) # p.value < 0.05 <- Dependencia espacial
+```
+
+*Calculo para variable de Fe*
+
+```{r}
+Moran.I(XPABLO$Fe, dist_matrix_inv_pablo) # p.value < 0.05 <- Dependencia espacial
+```
+*Calculo para variable de Cu*
+
+```{r}
+Moran.I(XPABLO$Cu, dist_matrix_inv_pablo) # p.value < 0.05 <- Dependencia espacial
+```
+
+*Calculo para variable de Zn*
+
+```{r}
+Moran.I(XPABLO$Zn, dist_matrix_inv_pablo) # p.value < 0.05 <- Dependencia espacial
+```
+
+**Opcional**
+
+**Vecinos más cercanos, es decir, máximo X distancia**
+
+#### Solo mirar lagunas a 100 metros cuadrados
+
+
+# Información de la Clase
+## Datos geoderenciados (área)
+
+### Midiendo dependencia espacial de datos ariales
+
+**patrones de tipo espacial**
+
+### Indice de Moran (autocorrelación)
+
+
+### Creación de coordenadas artificiales
+
+```{r}
+#Ejemplo para palmas
+set.seed(123)
+xy <- expand.grid(x = seq(0,60,10),
+                  y = seq(0,60,5))
+rto <- rnorm(91, mean = 200, sd = 10)
+color <- cut(rto, breaks = 5)
+plot(xy, pch = 8, cex = 1.5, col = color)
+```
+
+## Matriz de distacia
+
+```{r}
+dist_matrix <- as.matrix(dist(cbind(xy$x, xy$y)))#;dist_matrix
+which.max(dist_matrix) # Es la posición de la máxima
+max(dist_matrix) # Mayor valor 
+min(dist_matrix) # Menor valor
+dim(xy)
+```
+
+```{r}
+#dist_matrix
+```
+
+## Inversa de la distancia
+
+```{r}
+dist_matrix_inv <- 1 / dist_matrix # Element wise
+diag(dist_matrix_inv) <- 0
+#dist_matrix_inv
+```
+
+```{r}
+Moran.I(rto, dist_matrix_inv) # p.value < 0.05 <- Dependencia espacial
+```
