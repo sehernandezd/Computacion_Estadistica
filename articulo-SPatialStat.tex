@@ -1,0 +1,107 @@
+% !TeX spellcheck = es_CO-SpanishColombia
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Plantilla para un artículo en LaTeX en español.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass{article}
+
+% Esto es para poder escribir acentos directamente:
+\usepackage[latin1]{inputenc}
+% Esto es para que el LaTeX sepa que el texto está en español:
+\usepackage[spanish]{babel}
+
+% Paquetes de la AMS:
+\usepackage{amsmath, amsthm, amsfonts}
+
+% Teoremas
+%--------------------------------------------------------------------------
+\newtheorem{thm}{Teorema}[section]
+\newtheorem{cor}[thm]{Corolario}
+\newtheorem{lem}[thm]{Lema}
+\newtheorem{prop}[thm]{Proposición}
+\theoremstyle{definition}
+\newtheorem{defn}[thm]{Definición}
+\theoremstyle{remark}
+\newtheorem{rem}[thm]{Observación}
+
+% Atajos.
+% Se pueden definir comandos nuevos para acortar cosas que se usan
+% frecuentemente. Como ejemplo, aquí se definen la R y la Z dobles que
+% suelen representar a los conjuntos de números reales y enteros.
+%--------------------------------------------------------------------------
+
+\def\RR{\mathbb{R}}
+\def\ZZ{\mathbb{Z}}
+
+% De la misma forma se pueden definir comandos con argumentos. Por
+% ejemplo, aquí definimos un comando para escribir el valor absoluto
+% de algo más fácilmente.
+%--------------------------------------------------------------------------
+\newcommand{\abs}[1]{\left\vert#1\right\vert}
+
+% Operadores.
+% Los operadores nuevos deben definirse como tales para que aparezcan
+% correctamente. Como ejemplo definimos en jacobiano:
+%--------------------------------------------------------------------------
+\DeclareMathOperator{\Jac}{Jac}
+
+%--------------------------------------------------------------------------
+\title{Introducción a datos espaciales y S+SpatialsData}
+\author{Sergio Andrés Hernández Duarte\\
+  \small Universidad Nacional de Colombia\\
+  \small Facultad de Ciencias agrarias\\
+  \small Bogotá
+}
+
+\begin{document}
+\maketitle
+
+\abstract{El presente documento es un resumen pequeño sobre algunas características de los datos espaciales}
+
+
+\section{Tipos de datos espaciales}
+
+Los datos espaciales tienen la característica de ser determinados por localizaciones específicas, es decir tienen una latitud y una longitud asociada, siempre son observaciones de interés sobre un fenómeno en particular y pueden ser observaciones de fenómenos discretos y continuos.
+
+\subsection{Datos Geoestadísticos}\label{sec:nada}
+
+Datos que presentan generalmente una continuidad espacial, que presentan variaciones a pequeña escala, y pueden ser modelados mediante una correlación espacial. La variabilidad espacial es modelada en función de la distancia. Un hecho claro es que el análisis espacial puede usarse a cualquier tipo de datos de los cuales se considera su localización. Sin embargo, la aplicación de geoestadística solo se puede usar cumpliendo algunas restricciones en los datos obtenidos: Estacionaridad de segundo orden.  
+
+\subsubsection{Datos Lattice}\label{sec:nada2}
+
+Son datos asociados con regiones espaciales (en un área determinada), una colección fija regular o irregular de puntos, generalmente corresponden a un polígono delimitado por una serie de vértices y bordes que se divide en pixeles. 
+
+\subsubsection{Patrones de puntos espaciales}
+
+Consiste en un número finito de observaciones localizadas en una región espacial, generalmente, se estudia si estos puntos corresponden a un patrón aleatorio, regular, o agregado. Empleando indices como Moran, Morisita, Fisher y Floyd.
+
+\section{Análisis de datos espaciales}
+
+Es diferente de otros tipos de análisis de datos debido a que incluye la localización espacial del fenómeno, empleando diferentes modelos se pueden llegar a diferentes estimaciones sobre el fenómeno.
+\subsubsection{Modelo de datos}
+Los datos espaciales generalmente se pueden descomponer en dos componente principales:
+$$$$
+	datos= pequeña escala de variación+ amplia escala de variación
+
+La  variación a gran escala presenta tendencias globales, mientras que la variación a pequeña escala se puede modelar mediante patrones de dependencia local. A esto se les atribuye un error que puede llevarse desde la medición y la variabilidad dentro de la región o del lugar.
+\subsubsection{Precisión}
+
+Los datos recolectados siempre pueden tener errores en la medición. Generalmente las regiones areales pueden tener muchas formas y tamaños, la resolución con la que se capta la medición puede tener diferentes fuentes de error. Los modelos de dependencia espacial dependen del área y pueden ser afectados por valores atípicos.
+\subsubsection{Estacionariedad}
+Implica que la variabilidad del fenómeno observado en el tiempo es muy baja.
+\subsubsection{Isotropía}
+El fenómeno observado presenta las mismas cualidades sin importar la dirección en la cuál es observado
+\subsubsection{Escala}
+Todos los fenómenos espaciales son dependientes de la escala,  la resolución de captura del fenómeno permite diferentes tipos de análisis, hasta que medida local (Finca o tal vez municipio) o si se debe manejar regional (ciudades, país, global), etc.
+
+% Bibliografía.
+%-----------------------------------------------------------------
+\begin{thebibliography}{99}
+
+\bibitem{Cd94} Stephen P. Kaluzny Silvia C. Vega Tamre P. Cardoso Alice A. Shelly., (1995).\emph{S+SPATIALSTATS}, Springer.
+
+\end{thebibliography}
+
+\end{document}
