@@ -1,0 +1,164 @@
+---
+title: "CE-09052022"
+author: "Sergio A. Hernández"
+date: "9/5/2022"
+output: html_document
+---
+
+### Comparación de genotipos
+
+Se quieren comparar los siguientes tratamientos
+
+Var. Respuesta: Canabinoide (udc)
+Factor: Genótipo (3 niveles)
+        1. Gen1
+        2. Gen2
+        3. Gen3
+    
+$$H_o=\mu_{can-gen1}=\mu_{can-gen2}=\mu_{can-gen1}$$
+Hipótesis de investigación: 
+- Nula al menos uno es diferente
+- alterna la nula no se cumple
+$$H_a: H_o-es-falsa$$
+Concentración diferente solamente debida al genótipo
+(controlar los factores que influyen en la respuesta)
+
+
+- Diseño: **Factorial simple** `En arreglo completamente al azar`
+(No hay gradientes de húmedad,pendiente y/o relieve que me puedan alterar el experimento)
+
+```{r}
+set.seed(123)
+cannabinoide=rnorm(72, mean=5,sd=0.20)
+
+udc= c(
+  rnorm(24, mean=5,sd=0.20),
+  rnorm(24, mean=5.6,sd=0.22),
+  rnorm(24, mean=5.8,sd=0.18)
+)
+
+genotipo=gl(n=3,k=24, length=72, c('gen1','gen2','gen3'))
+
+df1=data.frame(genotipo,udc)
+head(df1)
+```
+24 genotipos, Se hace una aleatorización d elos trata,mientos pára verlos al azar, grilla e intensidad del color
+
+```{r}
+library(ggplot2)
+xy=expand.grid(x=1:8,y=1:9)
+aleat=sample(72,72, FALSE)
+sample
+df1$cord_x=xy$x[aleat]
+df1$cord_y=xy$y[aleat]
+ggplot(df1)+
+  aes(cord_x,cord_y,fill=udc)+
+  geom_tile(color='black', width=0.8, height=0.8)+
+  geom_text(aes(label=genotipo),color='white')
+
+# width and nheight creando calles en las rejillas
+  #geom-tile es teja 
+```
+El color de la rejilla tenga que ver con la concentración del canabinoide,m puedo ver como se está concentrando el canabinoide
+se encuentra distribuido en latitud y lóngitud
+
+## Estadística descriptiva
+
+Boxplot o lattice
+
+```{r}
+ggplot(df1)+
+  aes(genotipo,udc, fill=genotipo)+
+  geom_boxplot()+
+  geom_hline(yintercept=5.2)
+
+```
+```{r}
+library(dplyr)
+df1 %>%
+  group_by(genotipo) %>%
+  summarise(media=mean(udc),
+            desv=sd(udc),
+            cv=100*desv/media)
+```
+
+### Estadistica inferencial
+
+i hasta 9
+j hasta 24 genotipos
+
+Modelo:
+$$\mu: es-intercepto$$
+$$\epsilon_{ij}: error-residual$$
+
+La respuesta es función del genotipo
+$$y_{ij}=\mu+\tau_i+\epsilon_{ij}$$
+$$i=1,2,3;\;j=1,2\dots,24$$
+
+Analisis de varianza aov
+```{r}
+mod1=aov(udc~genotipo,data=df1)
+s_mod1=summary(mod1)
+p_valor=s_mod1[[1]][1,5]
+ifelse(p_valor<0.05,'rechazo Ho', 'No rechazo Ho')
+```
+
+pr: Prestado? probabilidad
+
+Por que usaría esa regla, que criterios se pueden establecer
+- El experimento se debe hacer muchas veces
+
+#### Vamos a comparar todos los genotipos
+
+```{r}
+#prueba de tukey
+TukeyHSD(mod1,'genotipo')
+# Se mete el modelo y compare los genotipos
+# En los 3 se observa que los tresgenótipos ya que la probabilidad es < al 5%
+
+
+```
+
+
+Al rechazar la hipótesis nula, con este test podemos establecer que los 3 son diferentes en cuanto al contenido de canabinoides
+
+###### Revisión de los supuestos del modelo:
+
+`1. Normalidad`
+```{r}
+shapiro.test(mod1$residuals)
+```
+Mayor que el 5 % son normales en p-value
+
+Los residuales en el modelos son los 
+$$\epsilon_{ij}$$
+ **2** `igualdad de varianzas` 
+```{r}
+#Prueba de barlett varianzas iguales
+bartlett.test(mod1$residuals,df1$genotipo)
+#20% de confianza si fueran ej:0.70 de confianza
+
+```
+```{r}
+library(writexl)
+#Exportando los datos
+write_xlsx(df1,'Datos_CE.xlsx')
+
+```
+
+#Tarea: Probar si los residuales presentan dependencia espacial con I de Moran
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
