@@ -1,0 +1,421 @@
+---
+title: "Clase 21-04-2022"
+author: "Sergio Andrés Hernández"
+date: "4/28/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(spatialreg) ## Librería que permite utilizar datos espaciales
+library(spdep)
+library(ape)
+library(sp)
+library(readxl)
+library(psych) 
+library(openxlsx)
+library(ggplot2)
+library(dplyr)
+```
+
+## Carga de datos
+
+```{r}
+
+datos_xp <- read_excel("C:/Users/57321/Downloads/XPABLO.XLSX")
+#View(datos_xp)
+```
+
+## Modelo de regresión simple (Cuestionarlo)
+
+```{r}
+names(datos_xp)
+```
+
+## Redefiniendo df
+
+```{r}
+df <- datos_xp[-c(15,16,17,18,19)]
+names(df)
+```
+
+## MO
+
+**Trabajar con las demás variables**
+
+```{r}
+model_1 <- lm(MO ~ Ca, data = df) 
+summary(model_1)
+```
+
+$$Y_{MO} = 1.449 + 0.089X_{Ca}$$
+
+```{r}
+ggplot(df, aes(y = MO, x = Ca)) +
+  geom_point()+
+  geom_smooth(method='lm', se = F)
+```
+
+## Filtrado Ca > 15
+
+```{r}
+df_2 <- df |>
+  filter(Ca <= 15)
+df_2
+```
+
+```{r}
+model_2 <- lm(MO ~ Ca, data = df_2) 
+summary(model_2)
+```
+
+```{r}
+ggplot(df_2, aes(y = MO, x = Ca)) +
+  geom_point()+
+  geom_smooth(method='lm', se = F)
+```
+
+## 
+
+```{r}
+res_2 <- model_2$residuals
+hist(res_2)
+```
+
+## Sin valor absoluto (Con valores negativos)
+```{r}
+res_2 <- model_2$residuals
+
+ggplot(df_2, aes(Long, Lat))+
+  geom_point(size = res_2)
+```
+
+## Con correción
+
+```{r}
+ggplot(df_2, aes(Long, Lat))+
+  geom_point(size = abs(res_2))
+```
+
+```{r}
+groups_col <- cut(res_2, breaks = 5)
+#color <- 
+ggplot(df_2, aes(Long, Lat, color = groups_col))+
+  geom_point(size = 5)
+```
+
+## Moran Index para residuales 
+
+```{r}
+matriz_dist <- as.matrix(dist(cbind(x = df_2$Long, y = df_2$Lat)))
+
+dim(matriz_dist)
+```
+
+```{r}
+m_dist_inv <- 1/matriz_dist
+m_dist_inv[is.infinite(m_dist_inv)] <- 0
+diag(m_dist_inv) <- 0
+m_dist_inv
+```
+
+```{r}
+Moran.I(res_2, m_dist_inv) 
+```
+
+## Modelo de regresión multiple
+
+```{r}
+model_3 <- lm(MO ~ Ca + CICE, data = df)
+summary(model_3)
+```
+
+$$Y_{MO} = 1.359 + 0.090X_{Ca} + 0.001z$$
+
+```{r}
+res_3 <- model_3$residuals
+```
+
+## Moran Index para residuales model 3
+
+```{r}
+matriz_dist <- as.matrix(dist(cbind(x = df$Long, y = df$Lat)))
+
+dim(matriz_dist)
+```
+
+```{r}
+m_dist_inv <- 1/matriz_dist
+m_dist_inv[is.infinite(m_dist_inv)] <- 0
+diag(m_dist_inv) <- 0
+m_dist_inv
+```
+
+```{r}
+Moran.I(res_3, m_dist_inv) 
+```
+
+
+```{r}
+model_4 <- lm(MO ~ Ca + Long + Lat + I(Long**2) + I(Lat**2), data = df) #datos georrefenciados
+summary(model_4)
+```
+
+```{r}
+res_4 <- model_4$residuals
+shapiro.test(res_4)
+plot(res_4, pch = 16)
+Moran.I(res_4, m_dist_inv) 
+```
+
+```{r}
+groups_col <- cut(res_4, breaks = 5)
+ggplot(df, aes(Long, Lat, color = groups_col))+
+  geom_point(size = 3)
+```
+
+## 
+
+```{r}
+model_5 <- lm(MO ~ Ca + I(Long**2) + I(Lat**2) + I(Ca**2)+ Long + Lat , data = df) #datos georrefenciados
+summary(model_5)
+```
+```{r}
+res_5 <- model_5$residuals
+Moran.I(res_5, m_dist_inv) 
+```
+
+## Modelos de regresión espacial
+
+```{r}
+xy = as.matrix(df[,c(2,3)])
+```
+
+```{r}
+contnb <- dnearneigh(coordinates(xy),0,380000,longlat = F)
+dlist <- nbdists(contnb, xy)
+dlist <- lapply(dlist, function(x) 1/x)            #inverse distance
+Wve <- nb2listw(contnb,glist=dlist,style = "W")       #W matriz-standarized
+```
+
+## Modelo autoregresivo puro
+
+```{r}
+model_auto <- spautolm(MO ~ 1,data = df,listw=Wve)
+summary(model_auto)
+```
+
+$$Y_{MO} = \alpha_0 + \lambda W Y_{MO} + u\\
+u = \rho W u + \epsilon$$
+
+**Si $\rho$ = 0, u = $\epsilon$**
+
+$$Y_{MO} = \alpha_0 + \lambda W Y_{MO} + \epsilon$$
+
+```{r}
+res_6 <- model_auto$fit$residuals
+```
+
+```{r}
+Moran.I(res_6, m_dist_inv)
+```
+
+### Asignación
+
+* Escoger una propia variable (Relación ej. Ca/Mg)
+
+* Resultados (en clase) próximo JUEVES
+
+##########################################################################
+
+# Seleccion de una variable
+
+## Modelo de regresión simple (Cuestionarlo)
+
+```{r}
+names(df)
+```
+
+## 
+
+```{r}
+model_1 <- lm(Ca ~ K, data = df) 
+summary(model_1)
+```
+
+$$Y_{Ca} = 5.0613 + 11.21_{K}$$
+
+```{r}
+ggplot(df, aes(y = Ca, x = K)) +
+  geom_point()+
+  geom_smooth(method='lm', se = F)
+```
+
+## Filtrado Ca > 15
+
+```{r}
+df_2 <- df |>
+  filter(Ca <= 15)
+df_2
+```
+
+```{r}
+model_2 <- lm(Ca ~ K, data = df_2) 
+summary(model_2)
+```
+
+```{r}
+ggplot(df_2, aes(y = Ca, x = K)) +
+  geom_point()+
+  geom_smooth(method='lm', se = F)
+```
+
+## 
+
+```{r}
+res_2 <- model_2$residuals
+hist(res_2)
+```
+
+## Sin valor absoluto (Con valores negativos)
+```{r}
+res_2 <- model_2$residuals
+
+ggplot(df_2, aes(Long, Lat))+
+  geom_point(size = res_2)
+```
+
+## Con correción
+
+```{r}
+ggplot(df_2, aes(Long, Lat))+
+  geom_point(size = abs(res_2))
+```
+
+```{r}
+groups_col <- cut(res_2, breaks = 5)
+#color <- 
+ggplot(df_2, aes(Long, Lat, color = groups_col))+
+  geom_point(size = 5)
+```
+
+## Moran Index para residuales 
+
+```{r}
+matriz_dist <- as.matrix(dist(cbind(x = df_2$Long, y = df_2$Lat)))
+
+dim(matriz_dist)
+```
+
+```{r}
+m_dist_inv <- 1/matriz_dist
+m_dist_inv[is.infinite(m_dist_inv)] <- 0
+diag(m_dist_inv) <- 0
+m_dist_inv
+```
+
+```{r}
+Moran.I(res_2, m_dist_inv) 
+```
+
+## Modelo de regresión multiple
+
+```{r}
+model_3 <- lm(MO ~ Ca + CICE, data = df)
+summary(model_3)
+```
+
+$$Y_{MO} = 1.359 + 0.090X_{Ca} + 0.001z$$
+
+```{r}
+res_3 <- model_3$residuals
+```
+
+## Moran Index para residuales model 3
+
+```{r}
+matriz_dist <- as.matrix(dist(cbind(x = df$Long, y = df$Lat)))
+
+dim(matriz_dist)
+```
+
+```{r}
+m_dist_inv <- 1/matriz_dist
+m_dist_inv[is.infinite(m_dist_inv)] <- 0
+diag(m_dist_inv) <- 0
+m_dist_inv
+```
+
+```{r}
+Moran.I(res_3, m_dist_inv) 
+```
+
+
+```{r}
+model_4 <- lm(MO ~ Ca + Long + Lat + I(Long**2) + I(Lat**2), data = df) #datos georrefenciados
+summary(model_4)
+```
+
+```{r}
+res_4 <- model_4$residuals
+shapiro.test(res_4)
+plot(res_4, pch = 16)
+Moran.I(res_4, m_dist_inv) 
+```
+
+```{r}
+groups_col <- cut(res_4, breaks = 5)
+ggplot(df, aes(Long, Lat, color = groups_col))+
+  geom_point(size = 3)
+```
+
+## 
+
+```{r}
+model_5 <- lm(MO ~ Ca + I(Long**2) + I(Lat**2) + I(Ca**2)+ Long + Lat , data = df) #datos georrefenciados
+summary(model_5)
+```
+```{r}
+res_5 <- model_5$residuals
+Moran.I(res_5, m_dist_inv) 
+```
+
+## Modelos de regresión espacial
+
+```{r}
+xy = as.matrix(df[,c(2,3)])
+```
+
+```{r}
+contnb <- dnearneigh(coordinates(xy),0,380000,longlat = F)
+dlist <- nbdists(contnb, xy)
+dlist <- lapply(dlist, function(x) 1/x)            #inverse distance
+Wve <- nb2listw(contnb,glist=dlist,style = "W")       #W matriz-standarized
+```
+
+## Modelo autoregresivo puro
+
+```{r}
+model_auto <- spautolm(MO ~ 1,data = df,listw=Wve)
+summary(model_auto)
+```
+
+$$Y_{MO} = \alpha_0 + \lambda W Y_{MO} + u\\
+u = \rho W u + \epsilon$$
+
+**Si $\rho$ = 0, u = $\epsilon$**
+
+$$Y_{MO} = \alpha_0 + \lambda W Y_{MO} + \epsilon$$
+
+```{r}
+res_6 <- model_auto$fit$residuals
+```
+
+```{r}
+Moran.I(res_6, m_dist_inv)
+```
+
