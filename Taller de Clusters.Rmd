@@ -1,0 +1,157 @@
+---
+title: "Clase 20"
+author: "Sergio H"
+date: '2022-05-26'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(plotly)
+library(factoextra)
+library(dplyr)
+library(psych)
+```
+
+
+## Asignación para el próximo lunes
+
+* Correr el mismo código de clase, para Chroma y Hue
+
+* Caracterizar los Cluster
+
+* Utilizar algún gráfico que muestre el número de cluster
+
+* Pasar de coordenadas Lab a RGB (Investigar) y hacer los cluster con las coordanadas RGB
+
+* Existe alguna relación del Chroma y Hue para coordenadas RGB, si es cierto, entonces realiza los cluster con RGB
+
+* Pueden colocar otro tipo de coordenadas (ej. HLS, HVS)
+
+# Solución
+
+1. Chroma:
+
+$$C=\sqrt{(a^2+b^2)}$$
+2. Hub:
+
+$$h=arctan(\frac{b}{a})$$
+#Solución Chroma y Hub
+
+```{r}
+dfcie <- read_excel("C:/Users/57321/Desktop/CE 2022-1/Cielab_tueste_cafe.xlsx")
+
+```
+
+```{r}
+fig <- plot_ly(data = dfcie, 
+               x = ~C, 
+               y = ~H, 
+               #z = ~H, 
+               size = 0.7, 
+               color = ~tueste)
+fig
+```
+
+## Métodos de agrupamiento (Cluestering)
+
+* Kmeans (K-medias) para creación de cluster
+
+```{r}
+M = dfcie[ ,c(-1,-2,-3,-4)]
+
+M
+```
+```{r}
+## Número óptimo de clusters
+
+Ms = scale(M)
+fviz_nbclust(Ms,
+             FUNcluster = kmeans,
+             method = 'gap_stat',
+             diss = get_dist(Ms,
+                             'euclidean'))
+```
+```{r}
+clus1 = kmeans(Ms, 3)
+dfcie$cluster <- clus1$cluster
+dfcie <- dfcie[c(-1,-2,-3,-4)]
+dfcie |>
+  group_by(cluster) |>
+  summarise(media_C = mean(C),
+            media_H = mean(H),
+            desv_C = sd(C),
+            desv_H = sd(H),
+            coeV_C = 100 * desv_C/media_C,
+            coeV_H = 100 *desv_H/media_H,
+            )
+
+#table(dfcie$tueste,
+#      clus1$cluster) ## Matriz de confusión
+```
+
+
+# CIELAB TO RGB
+
+
+
+```{r}
+dfcie <- read_excel("C:/Users/57321/Desktop/CE 2022-1/Cielab_tueste_cafe.xlsx")
+```
+
+```{r}
+fig <- plot_ly(data = dfcie, 
+               x = ~R, 
+               y = ~G, 
+               z = ~B, 
+               size = 0.7, 
+               color = ~tueste)
+fig
+```
+
+
+## Métodos de agrupamiento (Cluestering)
+
+* Kmeans (K-medias) para creación de cluster
+
+```{r}
+M = dfcie[ ,c(-1,-2,-3,-4,-5,-6)]
+
+M
+```
+
+## Métodos de agrupamiento (Cluestering)
+
+* Kmeans (K-medias) para creación de cluster
+
+
+```{r}
+## Número óptimo de clusters
+Ms = scale(M)
+fviz_nbclust(Ms,
+             FUNcluster = kmeans,
+             method = 'gap_stat',
+             diss = get_dist(Ms,
+                             'euclidean'))
+```
+```{r}
+clus1 = kmeans(Ms, 3)
+dfcie$cluster <- clus1$cluster
+dfcie <- dfcie[-4]
+dfcie |>
+  group_by(cluster) |>
+  summarise(media_R = mean(R),
+            media_G = mean(G),
+            media_B = mean(B),
+            desv_R = sd(R),
+            desv_G = sd(G),
+            desv_B = sd(B),
+            coeV_R = 100 * desv_R/media_R,
+            coeV_G = 100 *desv_G/media_G,
+            coeV_B = 100 *desv_B/media_B)
+
+#table(dfcie$tueste,
+#      clus1$cluster) ## Matriz de confusión
+```
+
