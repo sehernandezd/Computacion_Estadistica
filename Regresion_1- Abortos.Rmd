@@ -1,0 +1,233 @@
+---
+title: "Regresion Taller"
+author: "Sergio Andrés Hernández"
+date: "6/26/2022"
+output: html_document
+---
+
+Datos generados a partir de la libreria Faux.
+
+```{r}
+library(faux)
+set.seed(888)
+# Manera de generar datos
+```
+
+```{r}
+
+dfa <- rnorm_multi(n = 1000,
+            mu = c(67, 30, 30, 320),
+            sd = c(2, 3, 5, 10),
+            varnames = c('edad', 'dap', 'rto', 'clolA'),
+            r = c(0.4, 0.6, 0.5, 0.6, 0.7, 0.8))
+
+dfa$hibrido <- round(runif(n = 1000, min = 0,max = 1.2))
+
+w <- 0.5 * dfa$clolA - 0.01 * dfa$dap - 0.6 * dfa$rto - 0.02 * dfa$edad
+
+dfa$abortos <- ifelse(w > 140, 'Si', 'No')
+```
+
+Es para que haya una relación entre abortos y las variables
+
+```{r}
+head(dfa)
+```
+## Análisis univariado
+
+```{r}
+data <- data.frame(dfa)
+```
+
+```{r}
+data
+```
+# Análisis Univariado
+
+## Efecto de la edad
+```{r}
+univariable_edad2 <- glm(as.factor(abortos) ~ edad, family = binomial, data = data)
+summary(univariable_edad2)
+```
+
+Vemos que el efecto de la variable edad parece estar relacionado con el número de abortos
+
+## Efecto univariado de la variable dap
+```{r}
+univariable_dap <- glm(as.factor(abortos) ~ dap, family = binomial, data = data)
+summary(univariable_dap)
+```
+Vemos que el efecto de la variable dap parece estar relacionado con el número de abortos
+
+## Efecto de la variable hibrido
+
+```{r}
+univariable_h <- glm(as.factor(abortos) ~ hibrido, family = binomial, data = data)
+summary(univariable_h)
+```
+Vemos que el efecto de la variable hibrido no Parece estar relacionado con el número de abortos
+
+# Efecto univariado de la variable rendimiento
+
+```{r}
+univariable_rto <- glm(as.factor(abortos) ~ rto, family = binomial, data = data)
+summary(univariable_rto)
+```
+Parece que el efecto de la variable rto puede estar relacionado con el número de abortos
+
+## Efecto univartiado de la variable clorofila
+
+```{r}
+univariable_cloA <- glm(as.factor(abortos) ~ cloA, family = binomial, data = data)
+summary(univariable_cloA)
+```
+N0O Parece estar relacionado con el número de abortos
+
+
+# Paso 2: Análisis Multivariado
+ 
+```{r}
+model1 <- glm(as.factor(abortos) ~ edad + dap + rto+ hibrido + cloA, family = binomial, data = data)
+summary(model1)
+```
+En el análisis completo solo se estaría quedando la variable DAP (las organizo de mayor a menor efecto)
+Ahora voy a borrar el hibrido
+
+```{r}
+model2 <- glm(as.factor(abortos) ~dap + rto +hibrido + cloA, family = binomial, data = data) # Elimiando la 
+summary(model2)
+```
+# Delta beta
+
+Restamos el efecto de hibrido
+
+```{r, warning = FALSE, message=FALSE}
+delta.coef <- abs((coef(model2)-coef(model1)[-c(1)])/coef(model1)[-c(1)])
+round(delta.coef, 3)
+```
+Cambio en la edad 
+
+```{r}
+#Aca quitamos el rendimiento, mejor quitemos CloA
+model3 <- glm(as.factor(abortos) ~ edad+ dap + rto, family = binomial, data = data) # Elimiando la 
+summary(model3)
+```
+
+# Delta beta
+
+Restamos el efecto de CloA
+
+```{r, warning = FALSE, message=FALSE}
+delta.coef <- abs((coef(model3)-coef(model2)[-c(4)])/coef(model2)[-c(4)])
+round(delta.coef, 3)
+```
+No me esta cambiando los coeficientes
+
+
+```{r}
+#Aca quitamos el rendimiento, mejor quitemos CloA
+model4 <- glm(as.factor(abortos) ~ edad+ dap, family = binomial, data = data) # Elimiando la 
+summary(model4)
+```
+# Delta beta
+
+Restamos el efecto de CloA, se aumento masivamente el dap
+
+```{r, warning = FALSE, message=FALSE}
+delta.coef <- abs((coef(model4)-coef(model3)[-c(3)])/coef(model3)[-c(3)])
+round(delta.coef, 3)
+```
+
+```{r}
+#Aca quitamos el rendimiento, mejor quitemos CloA
+model5 <- glm(as.factor(abortos) ~dap+rto , family = binomial, data = data) # Elimiando la 
+summary(model5)
+
+
+```
+###############################################
+
+
+###########################################################
+
+```{r}
+model_final <- glm(as.factor(abortos) ~ edad + dap, family = binomial, data = data) # Elimiando la variable con el pvalue más alto
+summary(model_final)
+```
+
+$$ln(\frac{p}{1-p}) = -9.02 + 0.26E + 0.95D - 0.12 C$$
+
+
+```{r}
+edades <- cut(data$edad, breaks = 7)
+tabla <- table(edades, abortos)
+prop.table(tabla)
+```
+
+
+```{r}
+#hist(model_final$fitted.values * 100)
+length(data$edad)
+probabilidades <- model_final$fitted.values
+prob <- ifelse(probabilidades < 0.5, 1, 0)
+table(prob, abortos)
+media_e <- mean(data$edad)
+colores <- ifelse(data$edad < media_e, 'blue', 'green')
+plot(model_final$fitted.values, cex = (data$edad * 0.015), pch = 19, col = colores)
+abline(h = 0.5, cex = 1.2, col = 'red')
+```
+
+```{r}
+media_d <- mean(data$dap)
+colores_d <- ifelse(data$dap < media_d, 'blue', 'green')
+plot(model_final$fitted.values, cex = (data$dap * 0.015), pch = 19, col = colores_d)
+abline(h = 0.5, cex = 1.2, col = 'red')
+```
+
+```{r}
+media_c <- mean(data$cloA)
+colores_c <- ifelse(data$cloA < media_c, 'blue', 'green')
+plot(model_final$fitted.values, cex = (data$cloA * 0.003), pch = 19, col = colores_c)
+abline(h = 0.5, cex = 1.2, col = 'red')
+```
+
+## Estudiando las interacciones del modelo
+
+```{r}
+model_inter1 <- glm(abortos ~ edad + dap + cloA + edad:dap, family = binomial, data = data)
+summary(model_inter1)
+```
+
+```{r}
+library(dplyr)
+
+data <- data |>
+  mutate(edad_c = ifelse(edad > mean(edad), 'mayor', 'menor'), 
+         dap_c = ifelse(dap < mean(dap), 'angosto','ancho'),
+         cloA_c = ifelse(cloA < mean(cloA), 'baja', 'alta'))
+print('edad abortos')
+edad_abortos <- table(data$edad_c, data$abortos); edad_abortos
+print('dap abortos')
+dap_abortos <- table(data$dap_c, data$abortos);dap_abortos
+print('cloA abortos')
+cloa_abortos <- table(data$cloA_c, data$abortos);cloa_abortos
+```
+** probabilidades cercanas a 1 es más probabilidad de supervivencia ** 
+
+```{r}
+mean(data$cloA)
+library(lmtest)
+
+lrtest(model_final, model2)
+```
+
+```{r}
+anova(model_final, model2, test = 'Chisq')
+```
+
+```{r}
+par(mfrow = c(2,3))
+scatter.smooth(edad, log(pr/(1-pr)), cex = 0.5) # Difieren en el largo profe
+scatter.smooth(dap, log(pr/(1-pr)), cex = 0.5)
+scatter.smooth(cloA, log(pr/(1-pr)), cex = 0.5)
+```

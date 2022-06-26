@@ -1,0 +1,195 @@
+---
+title: "Estrategia de construcción de modelos para regresión logistica"
+author: "Sergio Andrés Hernández"
+date: '2022-06-02'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Ejemplo de Mortalidad 
+
+
+```{r}
+set.seed(888)
+
+
+
+edad <- abs(round(rnorm(n = 1000,
+                        mean = 67,
+                        sd = 2)))
+
+dap <- abs(round(rnorm(n = 1000,
+                      mean = 30,
+                      sd = 3), 1)) #Relación Ca:Mg en vez de Diametro a la altura del pecho, Radiación solar
+
+hibrido <- factor(rbinom(n = 1000,
+                         size = 1,
+                         prob = 0.6),
+                  labels = c('h1', 'h2'))
+
+rto <- abs(round(rnorm(n = 1000,
+                       mean = 80,
+                       sd = 5), 1)) #Rendimiento
+
+cloA <- abs(round(rnorm(n = 1000,
+                        mean = 320,
+                        sd = 10)))
+
+
+z <- 0.22 * edad - 0.12 * cloA + dap -8 #Variable artificial
+
+pr <- 1/(1+exp(-z)) # Probabilidad de aborto
+
+y = rbinom(1000,1,pr) # Abortos
+
+abortos <- factor(rbinom(1000, 1, pr),
+                  labels = c('Si', 'No'))
+
+data <- data.frame(edad,
+                   dap,
+                   hibrido,
+                   rto,
+                   cloA,
+                   abortos)
+data
+```
+
+## Análisis univariado
+
+```{r}
+univariable_edad <- glm(abortos ~ edad, family = binomial, data = data)
+summary(univariable_edad)
+```
+
+```{r}
+univariable_dap <- glm(abortos ~ dap, family = binomial, data = data)
+summary(univariable_dap)
+```
+
+```{r}
+univariable_h <- glm(abortos ~ hibrido, family = binomial, data = data)
+summary(univariable_h)
+```
+
+```{r}
+univariable_rto <- glm(abortos ~ rto, family = binomial, data = data)
+summary(univariable_rto)
+```
+
+```{r}
+univariable_cloA <- glm(abortos ~ cloA, family = binomial, data = data)
+summary(univariable_cloA)
+```
+
+```{r}
+model1 <- glm(abortos ~ edad + dap + hibrido + rto + cloA, family = binomial, data = data)
+summary(model1)
+```
+
+```{r}
+model2 <- glm(abortos ~ edad + dap + rto + cloA, family = binomial, data = data) # Elimiando la variable con el pvalue más alto
+summary(model2)
+```
+
+# Delta beta
+
+```{r, warning = FALSE, message=FALSE}
+delta.coef <- abs((coef(model2)-coef(model1)[-c(4)])/coef(model1)[-c(4)])
+round(delta.coef, 3)
+```
+
+```{r}
+model3 <- glm(abortos ~ edad + dap + cloA, family = binomial, data = data) # Elimiando la variable con el pvalue más alto
+summary(model3)
+```
+
+```{r, warning = FALSE, message=FALSE}
+delta.coef <- abs((coef(model3)-coef(model2)[-c(4)])/coef(model2)[-c(4)])
+round(delta.coef, 3) # Este es el modelo que escogemos
+```
+
+
+```{r}
+model_final <- glm(abortos ~ edad + dap + cloA, family = binomial, data = data) # Elimiando la variable con el pvalue más alto
+summary(model_final)
+```
+
+$$ln(\frac{p}{1-p}) = -9.02 + 0.26E + 0.95D - 0.12 C$$
+
+```{r}
+edades <- cut(data$edad, breaks = 5)
+tabla <- table(edades, abortos)
+prop.table(tabla)
+```
+
+
+```{r}
+#hist(model_final$fitted.values * 100)
+length(data$edad)
+probabilidades <- model_final$fitted.values
+prob <- ifelse(probabilidades < 0.5, 1, 0)
+table(prob, abortos)
+media_e <- mean(data$edad)
+colores <- ifelse(data$edad < media_e, 'blue', 'green')
+plot(model_final$fitted.values, cex = (data$edad * 0.015), pch = 19, col = colores)
+abline(h = 0.5, cex = 1.2, col = 'red')
+```
+
+```{r}
+media_d <- mean(data$dap)
+colores_d <- ifelse(data$dap < media_d, 'blue', 'green')
+plot(model_final$fitted.values, cex = (data$dap * 0.015), pch = 19, col = colores_d)
+abline(h = 0.5, cex = 1.2, col = 'red')
+```
+
+```{r}
+media_c <- mean(data$cloA)
+colores_c <- ifelse(data$cloA < media_c, 'blue', 'green')
+plot(model_final$fitted.values, cex = (data$cloA * 0.003), pch = 19, col = colores_c)
+abline(h = 0.5, cex = 1.2, col = 'red')
+```
+
+## Estudiando las interacciones del modelo
+
+```{r}
+model_inter1 <- glm(abortos ~ edad + dap + cloA + edad:dap, family = binomial, data = data)
+summary(model_inter1)
+```
+
+```{r}
+library(dplyr)
+
+data <- data |>
+  mutate(edad_c = ifelse(edad > mean(edad), 'mayor', 'menor'), 
+         dap_c = ifelse(dap < mean(dap), 'angosto','ancho'),
+         cloA_c = ifelse(cloA < mean(cloA), 'baja', 'alta'))
+print('edad abortos')
+edad_abortos <- table(data$edad_c, data$abortos); edad_abortos
+print('dap abortos')
+dap_abortos <- table(data$dap_c, data$abortos);dap_abortos
+print('cloA abortos')
+cloa_abortos <- table(data$cloA_c, data$abortos);cloa_abortos
+```
+** probabilidades cercanas a 1 es más probabilidad de supervivencia ** 
+
+```{r}
+mean(data$cloA)
+library(lmtest)
+
+lrtest(model_final, model2)
+```
+
+```{r}
+anova(model_final, model2, test = 'Chisq')
+```
+
+```{r}
+par(mfrow = c(2,3))
+scatter.smooth(edad, log(pr/(1-pr)), cex = 0.5) # Difieren en el largo profe
+scatter.smooth(dap, log(pr/(1-pr)), cex = 0.5)
+scatter.smooth(cloA, log(pr/(1-pr)), cex = 0.5)
+```
+
