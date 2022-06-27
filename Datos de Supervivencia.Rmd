@@ -1,0 +1,215 @@
+---
+title: "Datos de Supervivencia"
+author: "Sergio Andrés Hernández"
+date: "6/26/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+## ![ARTICULO](https://atm.amegroups.com/article/view/11175/12526)
+
+# Análisis de Supervivencia para un cultivo de palma
+
+* **Variables:**
+
+* Tiempo = time: Variable respuesta: Tiempo de supervivencia
+* Edad = Age: meses de plantación
+* Hibrido = Sex: hibrido 1, hibrido 2
+* Severidad = ph.ecog: severidad en la misma escala
+* N17 = meal.cal: Nitrogeno medido en la hoja 17
+* P17 = wt.loss: Fosforo medido en la hoja 17
+
+**Generalmente se usa para ver que variables pueden influir en la mortalidad o no**
+
+Fallo de aparatos o maquinas,o muerte de individuos
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(survival)
+library(dplyr)
+#str(lung)
+```
+
+```{r}
+Data<-lung
+```
+
+```{r}
+names(Data)[4] <- 'Edad'
+names(Data)[5] <- 'Hibrido'
+names(Data)[6] <- 'Severidad'
+names(Data)[9] <- 'N17'
+names(Data)[10] <- 'P17'
+names(Data)[2] <- 'Tiempo'
+```
+
+```{r}
+str(Data)
+```
+La definición directa de datos censurados es que la información sobre el tiempo de supervivencia de un sujeto es incompleta. Este es un problema que la mayoría de los análisis de supervivencia sufren. 
+
+```{r}
+# Censura en epidemiología vegetal, identificar cuando murio
+Data.sur<-Surv(Data$Tiempo, Data$status)
+class(Data.sur)
+```
+El análisis de supervivencia requiere crear un objeto de supervivencia utilizando la función Surv(). Eso equivale a declarar un dato de supervivencia. El objeto de supervivencia se utiliza con frecuencia como variable de respuesta en una fórmula de modelo.
+
+```{r}
+Data.fit<-survfit(Data.sur~1)
+summary(Data.fit)
+```
+a los 310 hay 50% de probabilidad que mueran, en 0.75 y en 0.25 vamos a saber la probabiliidad de que viva o no, registrando la muerte o cambio de color
+
+```{r}
+plot(Data.fit,xlab="Dias",ylab="Proporción de muerte en cultivo de palma")
+abline(h = 0.5, col='green')
+abline(v = 310, col='green')
+abline(h = c(0.25, 0.75), col='purple') 
+abline(v = c(170, 550), col='purple')# No han muerto muchos, 75% de probabilididad de vida
+```
+
+
+Puntos en la linea vertical en el 50% o vida media, se puede comparar curvas, areas bajo la curva y funciones de las curvas, para tomar decisiones de aplicación.
+
+```{r}
+plot(Data.fit,xlab="Dias",ylab="Dosis letal 50 para Determinada dosis")
+abline(h = 0.5, col='orange')
+abline(v = 310, col='orange')
+points(c(310, 310), c(0.43, 0.57), pch =16, col='orange')
+points(c(280, 360), c(0.5, 0.5), pch =16, col='orange')
+```
+Se permite para comparar estratos, la linea que se cae es por falta de información
+
+```{r}
+Data.fit.strata<-survfit(Data.sur~Severidad,Data)
+plot(Data.fit.strata, lty = 1:4,col=4:8,xlab="Dias",ylab="Proporción de individuos",
+     lwd=3)
+legend(700, .9, c("Nivel 0", "Nivel 1","Nivel 2","Nivel 3"), lty = 1:4,col=1:4, lwd=3)
+abline(h = 0.5)
+```
+Supervivencia por generos:
+
+```{r}
+Data.fit.strata<-survfit(Data.sur~Hibrido,Data)
+
+plot(lung.fit.strata, conf.int = 0.95,ylab="Respuesta en dos hibridos",
+     col=11:13, xlab = 'dias', lwd=1)
+legend(700, .9, c("H1", "H2"), col=11:13, lwd=3)
+# abline(v = 400)
+abline(h = 0.25, col = 'maroon2', lwd=2)
+abline(h = 0.5, col = 'maroon2')
+abline(v = c(210, 320), col = 6)
+abline(v = c(350, 550), col = 7)
+```
+## Intervalos de Confianza para el estimador Kaplan-Meier
+
+El estimador de Kaplan Meier:
+
+```{r}
+library(km.ci)
+```
+
+```{r}
+a<-km.ci(Data.fit, conf.level=0.95, tl=NA, tu=NA, method="loghall")
+# plot(a, lty=2, lwd=2, col = c('red', 'black', 'black'))
+plot(a, lty=2, lwd=2, col = 'red')
+lines(Data.fit, lwd=2, lty=1, col = 'black')
+lines(Data.fit, lwd=1, lty=4, conf.int=T, col = 'blue')
+linetype<-c(1, 2, 4)
+legend(600, .9, c("Kaplan-Meier", "Hall-Wellner", "Pointwise"),
+       lty = linetype,
+       col = c('red', 'black', 'blue'))
+
+abline(h = 0.5, col='maroon3', lwd=2)
+abline(v = 310, col='maroon3', lwd=2)
+```
+
+```{r}
+aalen.fit<- survfit(coxph(Data.sur~1), type="aalen")
+sum_aalen.fit = summary(aalen.fit)
+
+plot(aalen.fit, col="red",lwd=1,lty=1)
+lines(Data.fit, lwd=1, lty=1)
+legend(600, .9,
+       c("Nelson-Aalen", "Kaplan-Meier"),
+       lty=c(1,1),
+       col=c("red", "black"))
+```
+
+```{r}
+barplot(sum_aalen.fit$time, cumsum(sum_aalen.fit$n.event))
+```
+
+```{r}
+mod_suv = lm(cumsum(sum_aalen.fit$n.event) ~ sum_aalen.fit$time)
+summary(mod_suv)
+
+plot(sum_aalen.fit$time, cumsum(sum_aalen.fit$n.event), pch = 16)
+abline(mod_suv)
+```
+```{r}
+survdiff(Data.sur~Severidad,Data)
+
+# Prueba de log-rank or Mantel-Haenszel
+survdiff(Data.sur~Hibrido,Data, rho = 0)
+# Preuba de Peto & Peto modification of the Gehan-Wilcoxon test
+survdiff(Data.sur~Hibrido,Data, rho = 1)
+
+
+survdiff(Data.sur~Hibrido + Severidad,Data)
+```
+x
+
+### Modelo Parametrico
+
+Modelo parametrico regresion multivariado
+-  EL modelo es aplicado cuando es univariado (intersecto), solo supervivencia en el tiempo
+
+```{r}
+par.wei<-survreg(Data.sur~1,dist="w")
+par.wei
+```
+
+
+```{r}
+kappa<-par.wei$scale
+lambda<-exp(-par.wei$coeff[1])
+zeit<-seq(from=0,to=1100,length.out=1000)
+s<-exp(-(lambda*zeit)^kappa)
+h<-lambda^kappa *kappa*zeit^(kappa-1)
+par(mfrow=c(2,1))
+plot(zeit,h,xlab="Days",ylab="h(t)", pch = 16, cex = 0.1, las = 1)
+plot(zeit,s,xlab="Days",ylab="s(t)", pch = 16, cex = 0.1, las = 1)
+```
+# Modelo Univariado dle efecto de P17
+
+```{r}
+univariable_P17 <- glm(as.factor(status) ~ P17, family = binomial, data = Data)
+summary(univariable_P17)
+```
+# Modelo Univariado dle efecto de N17
+
+```{r}
+univariable_N17 <- glm(as.factor(status) ~ N17, family = binomial, data = Data)
+summary(univariable_N17)
+```
+# Modelo Univariado dle efecto de P17
+
+```{r}
+univariable_P17 <- glm(as.factor(status) ~ Edad, family = binomial, data = Data)
+summary(univariable_P17)
+```
+
+-
+
+
+
+
+
+
+
+
